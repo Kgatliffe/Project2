@@ -1,0 +1,257 @@
+ ---
+title: "Project 2"
+output:
+  word_document: default
+  html_notebook: default
+---
+ 
+ 
+Splitting out test. TelcoXN is TelcoX converted to numerical in excel.
+
+```{r echo=FALSE}
+
+library(car)
+#library(caret)
+library(caTools)
+library(ggplot2)
+library(gridExtra)
+library(leaps)
+library(MASS)
+library(pls)
+library(plyr)
+library(randomForest)
+library(wesanderson)
+
+
+Telco<-read.csv('TelcoXNlogALL.csv')
+#Telco<-read.csv('TelcoXXN.csv')
+trainset = subset(Telco, Telco$sample == TRUE)
+testset  = subset(Telco, Telco$sample == FALSE)
+trainset <-trainset[c(-24)]
+trainset <-testset[c(-24)]
+summary(Telco)
+```
+
+Logistic Model
+
+```{r echo=FALSE}
+LogisticModel <- glm(as.factor(Churn) ~ .,family=binomial(link="logit"),data=trainset)
+summary(LogisticModel)
+anova(LogisticModel, test="Chisq")
+```
+
+AIC Selection 
+
+```{r echo=FALSE}
+mean_train<-apply(trainset, 2, mean)
+var_train<-apply(trainset, 2, var)
+
+train <- t((t(trainset)-mean_train)/sqrt(var_train))
+apply(train, 2, mean)
+apply(train, 2, var)
+
+dat.train<-data.frame(train, Churn=trainset$Churn)
+dat.train<-dat.train[c(-23)]
+
+##	NEED TO APPLY TRAINING MEAN AND STDEV TO STANDARDIZE TEST SET!!  ##
+test <- t((t(testset)-mean_train)/sqrt(var_train))
+dat.test <- data.frame(test, Churn=testset$Churn)
+apply(test, 2, mean)
+apply(test, 2, var)
+
+	LogisticModel.int <- glm(as.factor(Churn.1) ~ 1, family=binomial(link="logit"), data=dat.train)
+	LogisticModel.full <- glm(as.factor(Churn.1) ~ ., family=binomial(link="logit"),  data=dat.train)
+```
+
+Stepwise Selection AIC
+
+```{r echo=FALSE}
+stepAIC(LogisticModel.int, direction="both",
+             scope=list(lower=LogisticModel.int, upper= LogisticModel.full))
+```
+
+Logistic AIC Model
+
+```{r echo=FALSE}
+LogisticModelAIC <- glm(formula = as.factor(Churn) ~ TenureLog + Contract + ECheck + 
+    PaperlessBilling + TechSupport + OnlineSecurity + One.Year + 
+    PhoneService + MonthlyCharges, family = binomial(link = "logit"), data=trainset)
+summary(LogisticModelAIC)
+anova(LogisticModelAIC, test="Chisq")
+
+fitted.resultsLogisticAIC <- predict(LogisticModelAIC,newdata=testset,type='response')
+fitted.resultsLogisticAIC <- ifelse(fitted.resultsLogisticAIC > 0.5,1,0)
+misClasificErrorLogisticAIC <- mean(fitted.resultsLogisticAIC != testset$Churn)
+print(1-misClasificErrorLogisticAIC)
+table(testset$Churn, fitted.resultsLogisticAIC > 0.5)
+exp(cbind(OR=coef(LogisticModelAIC), confint(LogisticModelAIC)))
+```
+
+Stepwise Selection BIC
+
+```{r echo=FALSE}
+stepAIC(LogisticModel.int, direction="both", k=log(1378),
+             scope=list(lower=LogisticModel.int, upper= LogisticModel.full), criterion = "BIC")
+```
+
+Logistic BIC Model
+
+```{r echo=FALSE}
+LogisticModelBIC <- glm(as.factor(Churn) ~ TenureLog + DSL + Contract + 
+    ECheck + PaperlessBilling + TechSupport + OnlineSecurity, 
+    family = binomial(link = "logit"),data=trainset)
+summary(LogisticModelBIC)
+anova(LogisticModelBIC, test="Chisq")
+
+fitted.resultsLogisticBIC <- predict(LogisticModelBIC,newdata=testset,type='response')
+fitted.resultsLogisticBIC <- ifelse(fitted.resultsLogisticBIC > 0.5,1,0)
+misClasificErrorLogisticBIC <- mean(fitted.resultsLogisticBIC != testset$Churn)
+print(1-misClasificErrorLogisticBIC)
+table(testset$Churn, fitted.resultsLogisticBIC > 0.5)
+exp(cbind(OR=coef(LogisticModelBIC), confint(LogisticModelBIC)))
+```
+
+Probit Model
+
+```{r echo=FALSE}
+ProbitModel <- glm(as.factor(Churn.1) ~ 1, family=binomial(link="probit"),data=dat.train)
+summary(ProbitModel)
+anova(ProbitModel, test="Chisq")
+```
+
+AIC Selection 
+
+```{r echo=FALSE}
+ProbitModel.int <- glm(as.factor(Churn.1) ~ 1, family=binomial(link="probit"),data=dat.train)
+ProbitModel.full <- glm(as.factor(Churn.1) ~ ., family=binomial(link="probit"),data=dat.train)
+```
+
+Stepwise Selection AIC
+
+```{r echo=FALSE}
+stepAIC(ProbitModel.int, direction="both",
+             scope=list(lower=ProbitModel.int, upper= ProbitModel.full))
+```
+
+Probit Model AIC
+
+```{r echo=FALSE}
+ProbitModelAIC <- glm(Churn ~ TenureLog + DSL + Contract + 
+    ECheck + PaperlessBilling + TechSupport + OnlineSecurity + 
+    StreamingMovies + One.Year + PhoneService + MultipleLines + 
+    StreamingTV + SeniorCitizen,  family=binomial(link="probit"),data=trainset)
+summary(ProbitModelAIC)
+anova(ProbitModelAIC, test="Chisq")
+
+fitted.resultsProbitAIC <- predict(ProbitModelAIC,newdata=testset,type='response')
+fitted.resultsProbitAIC <- ifelse(fitted.resultsProbitAIC > 0.5,1,0)
+misClasificErrorProbitAIC <- mean(fitted.resultsProbitAIC != testset$Churn)
+print(1-misClasificErrorProbitAIC)
+table(testset$Churn, fitted.resultsProbitAIC > 0.5)
+exp(cbind(OR=coef(ProbitModelAIC), confint(ProbitModelAIC)))
+```
+
+Stepwise Selection BIC
+
+```{r echo=FALSE}
+stepAIC(ProbitModel.int, direction="both", k=log(1378),
+             scope=list(lower=ProbitModel.int, upper= ProbitModel.full), criterion = "BIC")
+```
+
+Probit BIC
+
+```{r echo=FALSE}
+ProbitModelBIC <- glm(as.factor(Churn) ~  TenureLog + DSL + Contract + 
+    ECheck + PaperlessBilling + TechSupport, family=binomial(link="probit"),data=trainset)
+summary(ProbitModelBIC)
+anova(ProbitModelBIC, test="Chisq")
+
+fitted.resultsProbitBIC <- predict(ProbitModelBIC,newdata=testset,type='response')
+fitted.resultsProbitBIC <- ifelse(fitted.resultsProbitBIC > 0.5,1,0)
+misClasificErrorProbitBIC <- mean(fitted.resultsProbitBIC != testset$Churn)
+print(1-misClasificErrorProbitBIC)
+table(testset$Churn, fitted.resultsProbitBIC > 0.5)
+exp(cbind(OR=coef(ProbitModelBIC), confint(ProbitModelBIC)))
+```
+
+Loading Factored Data Set for Random Forest
+
+```{r echo=FALSE}
+Telco<-read.csv('TelcoX.csv')
+trainset = subset(Telco, Telco$sample == TRUE)
+testset  = subset(Telco, Telco$sample == FALSE)
+trainset <-trainset[c(-24)]
+trainset <-testset[c(-24)]
+summary(Telco)
+```
+
+Random Forest
+
+```{r eval=FALSE, include=FALSE}
+
+RandomForestMod <- randomForest(Churn ~., data = trainset)
+print(RandomForestMod)
+RandomForestPredict <- predict(RandomForestMod, testset)
+plot(RandomForestMod)
+varImpPlot(RandomForestMod, sort=T, n.var = 10, main = 'Top 10 Feature Importance')
+RandomForestTune <- tuneRF(trainset[, -23], trainset[, 23], stepFactor = 0.5, plot = TRUE, ntreeTry = 200, trace = TRUE, improve = 0.05)
+```
+
+Refit
+```{r eval=FALSE, include=FALSE}
+RandomForestMod.2 <- randomForest(Churn ~., data = trainset, ntree = 200, mtry = 2, importance = TRUE, proximity = TRUE)
+print(RandomForestMod.2)
+pred_rf_new <- predict(RandomForestMod.2, testset)
+testset$Churn<-as.factor(testset$Churn)
+
+varImpPlot(RandomForestMod.2, sort=T, n.var = 10, main = 'Top 10 Feature Importance')
+```
+
+Compare
+```{r}
+print(LogisticModelAIC)
+print ("Logistic AIC")
+print(1-misClasificErrorLogisticAIC)
+table(testset$Churn, fitted.resultsLogisticAIC > 0.5)
+exp(cbind(OR=coef(LogisticModelAIC), confint(LogisticModelAIC)))
+print(LogisticModelBIC)
+print ("Logistic BIC")
+print(1-misClasificErrorLogisticBIC)
+table(testset$Churn, fitted.resultsLogisticBIC > 0.5)
+exp(cbind(OR=coef(LogisticModelBIC), confint(LogisticModelBIC)))
+print(ProbitModelAIC)
+print ("Probit AIC")
+print(1-misClasificErrorProbitAIC)
+table(testset$Churn, fitted.resultsProbitAIC > 0.5)
+exp(cbind(OR=coef(ProbitModelAIC), confint(ProbitModelAIC)))
+print(ProbitModelBIC)
+print ("Probit BIC")Vie
+print(1-misClasificErrorProbitBIC)
+table(testset$Churn, fitted.resultsProbitBIC > 0.5)
+exp(cbind(OR=coef(ProbitModelBIC), confint(ProbitModelBIC)))
+
+```
+
+```{r eval=FALSE, include=FALSE}
+LogisticModelTen <- glm(Churn ~ TenureCat.00.06,family=binomial(link="logit"),data=trainset)
+summary(LogisticModelTen)
+anova(LogisticModelTen, test="Chisq")
+
+fitted.resultsLogisticTen <- predict(LogisticModelTen,newdata=testset,type='response')
+fitted.resultsLogisticTen <- ifelse(fitted.resultsLogisticTen > 0.5,1,0)
+misClasificErrorLogisticTen <- mean(fitted.resultsLogisticTen != testset$Churn)
+print(1-misClasificErrorLogisticTen)
+table(testset$Churn, fitted.resultsLogisticTen > 0.5)
+exp(cbind(OR=coef(LogisticModelTen), confint(LogisticModelTen)))
+ProbitModelTen <- glm(Churn ~ TenureCat.00.06,family=binomial(link="probit"),data=trainset)
+summary(ProbitModelTen)
+anova(ProbitModelTen, test="Chisq")
+
+fitted.resultsProbitTen <- predict(ProbitModelTen,newdata=testset,type='response')
+fitted.resultsProbitTen <- ifelse(fitted.resultsProbitTen > 0.5,1,0)
+misClasificErrorProbitTen <- mean(fitted.resultsProbitTen != testset$Churn)
+print(1-misClasificErrorProbitTen)
+table(testset$Churn, fitted.resultsProbitTen > 0.5)
+exp(cbind(OR=coef(ProbitModelTen), confint(ProbitModelTen)))
+```
+
