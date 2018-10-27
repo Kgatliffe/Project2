@@ -224,15 +224,11 @@ trainset <-trainset[c(-1)]
 testset <-testset[c(-1)]
 ```
 
-Logistic Model Function
-
-LogisticModel <- glm(as.factor(Churn) ~ .,family=binomial(link="logit"),data=trainset)
-summary(LogisticModel)
-anova(LogisticModel, test="Chisq")
+Logistic AIC Model Function
 
 ```{r}
 
-Logistic<-function(trainset, testset)
+LogisticAIC<-function(trainset, testset)
 {
  LogisticModel <- glm(as.factor(Churn) ~.,family=binomial(link="logit"),data=trainset)
 summary(LogisticModel)
@@ -266,6 +262,91 @@ X<-stepAIC(LogisticModel.int, direction="both",
              scope=list(lower=LogisticModel.int, upper= LogisticModel.full))
 return()
 }
-Logistic(trainset, testset)
+```
+
+Logistic BIC Model Function
+
+```{r}
+#Stepwise Selection BIC
+LogisticBIC<-function(trainset, testset)
+{
+ LogisticModel <- glm(as.factor(Churn) ~.,family=binomial(link="logit"),data=trainset)
+summary(LogisticModel)
+anova(LogisticModel, test="Chisq")
+
+mean_train<-apply(trainset, 2, mean)
+var_train<-apply(trainset, 2, var)
+
+train <- t((t(trainset)-mean_train)/sqrt(var_train))
+apply(train, 2, mean)
+apply(train, 2, var)
+
+dat.train<-data.frame(train, Churn=trainset$Churn)
+dat.train<-dat.train[c(-1)]
+
+#Apply training mean and variance#
+
+test <- t((t(testset)-mean_train)/sqrt(var_train))
+dat.test <- data.frame(test, Churn=testset$Churn)
+apply(test, 2, mean)
+apply(test, 2, var)
+
+LogisticModel.int <- glm(as.factor(Churn.1) ~ 1, family=binomial(link="logit"), data=dat.train)
+LogisticModel.full <- glm(as.factor(Churn.1) ~ ., family=binomial(link="logit"),  data=dat.train)
+
+  stepAIC(LogisticModel.int, direction="both", k=log(1378),
+             scope=list(lower=LogisticModel.int, upper= LogisticModel.full), criterion = "BIC")
+}
+```
+
+```{r}
+ProbitAIC<-function(trainset, testset)
+{
+mean_train<-apply(trainset, 2, mean)
+var_train<-apply(trainset, 2, var)
+
+train <- t((t(trainset)-mean_train)/sqrt(var_train))
+apply(train, 2, mean)
+apply(train, 2, var)
+
+dat.train<-data.frame(train, Churn=trainset$Churn)
+dat.train<-dat.train[c(-1)]
+
+ProbitModel <- glm(as.factor(Churn.1) ~ 1, family=binomial(link="probit"),data=dat.train)
+summary(ProbitModel)
+anova(ProbitModel, test="Chisq")
+
+ProbitModel.int <- glm(as.factor(Churn.1) ~ 1, family=binomial(link="probit"),data=dat.train)
+ProbitModel.full <- glm(as.factor(Churn.1) ~ ., family=binomial(link="probit"),data=dat.train)
+
+stepAIC(ProbitModel.int, direction="both",
+             scope=list(lower=ProbitModel.int, upper= ProbitModel.full))
+return()
+}
+```
+
+```{r}
+ProbitBIC<-function(trainset, testset)
+{
+mean_train<-apply(trainset, 2, mean)
+var_train<-apply(trainset, 2, var)
+
+train <- t((t(trainset)-mean_train)/sqrt(var_train))
+apply(train, 2, mean)
+apply(train, 2, var)
+
+dat.train<-data.frame(train, Churn=trainset$Churn)
+dat.train<-dat.train[c(-1)]
+
+ProbitModel <- glm(as.factor(Churn.1) ~ 1, family=binomial(link="probit"),data=dat.train)
+summary(ProbitModel)
+anova(ProbitModel, test="Chisq")
+
+ProbitModel.int <- glm(as.factor(Churn.1) ~ 1, family=binomial(link="probit"),data=dat.train)
+ProbitModel.full <- glm(as.factor(Churn.1) ~ ., family=binomial(link="probit"),data=dat.train)
+stepAIC(ProbitModel.int, direction="both", k=log(1378),
+             scope=list(lower=ProbitModel.int, upper= ProbitModel.full), criterion = "BIC")
+return()
+}
 
 ```
