@@ -9,6 +9,7 @@ output:
 
 ```{r include=FALSE}
 library(car)
+library(caret)
 library(caTools)
 library(ggplot2)
 library(gridExtra)
@@ -17,6 +18,7 @@ library(MASS)
 library(pls)
 library(plyr)
 library(randomForest)
+library(visreg)
 library(wesanderson)
 
 options(stringsAsFactors = FALSE)
@@ -359,8 +361,8 @@ return()
 
 ```
 
-mfxboot is a function for bootstrapping Logit and Probit and was found here:
-https://diffuseprior.wordpress.com/2012/04/23/probitlogit-marginal-effects-in-r-2/
+mfxboot is a function for bootstrapping Logit and Probit in R including marginal effects. It was found here:
+https://diffuseprior.wordpress.com/2012/04/23/probitlogit-marginal-effects-in-r-2/ It was written by Alan Fernihough of University College Dublin, School of Economics.
 
 ```{r}
 mfxboot <- function(modform,dist,data,boot=500,digits=3){
@@ -437,12 +439,14 @@ TestandTrain(Model09)
 
 Model09 Probit BIC
 
-```{r}
+```{r include=FALSE}
 
 trainset = subset(Model09, Model09$sample == TRUE)
 testset  = subset(Model09, Model09$sample == FALSE)
 trainset <-trainset[c(-1)]
 testset <-testset[c(-1)]
+trainsetModel09<-trainset
+testsetModel09<-testset
 
 ModelAnalysisProBIC<- glm(as.factor(Churn) ~ LogTen + InternetService + TwoYearContract + 
      OneYearContract + StreamingMovies + ECheck + OnlineSecurity + 
@@ -458,8 +462,13 @@ exp(cbind(OR=coef(ModelAnalysisProBIC), confint(ModelAnalysisProBIC)))
 
 mfxboot(modform = ModelAnalysisProBIC, dist = "probit",
         data = testset)
+
+A<-as.character(testset$Churn)
+B<-as.character(fitted.results)
+
+confusionMatrix(table(testset$Churn, fitted.results))
 ```
-So how good is this model really? Running error analysis on tenure numeric, tenure categorical, and log tenure alone, code has been removed for all but log Tenure and Tenure numeric. Tenure dummy less than six months actually had results between Tenure numeric and log Tenure.
+So how good is this model really? Running error analysis on tenure numeric, tenure categorical, and log tenure alone, code has been removed for all but log Tenure and Tenure numeric. Tenure dummy less than six months actually had results between Tenure and log Tenure.
 
 Tenure Alone
 
@@ -486,5 +495,41 @@ misClasificError <- mean(fitted.results != testset$Churn)
 print(1-misClasificError)
 table(testset$Churn, fitted.results > 0.5)
 exp(cbind(OR=coef(ModelAnalysis), confint(ModelAnalysis)))
+```
+
+Miscellanious Graphics
+
+Correlation Plot of numerical variables used in the models. 
+
+```{r}
+onlynumvar <- read.csv('onlynumvar.csv')
+
+numeric.var <- sapply(onlynumvar, is.numeric) 
+cors<-cor(onlynumvar)  
+corrplot(cors)
+```
+
+```{r}
+color=wes_palette("Zissou1")
+
+visreg(ModelAnalysisProBIC, "LogTen", main = "Log Tenure", line=list(col=color),ylab="Churn", xlab="Log Tenure")
+par(mfrow=c(2,3))
+par(mar = rep(2, 4))
+visreg(ModelAnalysisProBIC, "InternetService",line=list(col=color),main="Internet Service",ylab="Churn", xlab="Internet Service")
+visreg(ModelAnalysisProBIC, "TwoYearContract",line=list(col=color),main="Two Year Contract", ylab="Churn", xlab="Two Year Contract")
+visreg(ModelAnalysisProBIC, "OneYearContract",line=list(col=color),main="One Year Contract", ylab="Churn", xlab="One Year Contract")
+visreg(ModelAnalysisProBIC, "StreamingMovies",line=list(col=color),main="Streaming Movies",ylab="Churn", xlab="Streaming Movies")
+visreg(ModelAnalysisProBIC, "ECheck",line=list(col=color),ylab="Churn",main="E-Check", xlab="E-Check")
+visreg(ModelAnalysisProBIC, "OnlineSecurity",line=list(col=color),main="OnlineSecurity",ylab="Churn", xlab="OnlineSecurity")
+visreg(ModelAnalysisProBIC, "MultipleLines",line=list(col=color),main="Multiple Lines",ylab="Churn", xlab="Multiple Lines")
+visreg(ModelAnalysisProBIC,"PaperlessBilling",line=list(col=color),main="Paperless Billing",ylab="Churn", xlab="Paperless Billing")
+visreg(ModelAnalysisProBIC,"PhoneService",line=list(col=color),main="Phone Service",ylab="Churn", xlab="Phone Service")
+visreg(ModelAnalysisProBIC,"StreamingTV",line=list(col=color),main="Streaming TV", ylab="Churn", xlab="Streaming TV")
+visreg(ModelAnalysisProBIC,"TotalCharges",line=list(col=color), main="Total Charges",ylab="Churn", xlab="Total Charges")
+visreg(ModelAnalysisProBIC,"SeniorCitizen",line=list(col=color),main="Senior Citizen",ylab="Churn", xlab="Senior Citizen")
+
+
+
+
 ```
 
